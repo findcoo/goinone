@@ -42,6 +42,7 @@ type BalanceInfo struct {
 type BalanceResponse struct {
 	APIResponse
 	Btc           BalanceInfo `json:"btc"`
+	Bch           BalanceInfo `json:"bch"`
 	Eth           BalanceInfo `json:"eth"`
 	Etc           BalanceInfo `json:"etc"`
 	Xrp           BalanceInfo `json:"xrp"`
@@ -51,6 +52,36 @@ type BalanceResponse struct {
 		Balance float64 `json:"balance"`
 		Label   string  `json:"label"`
 	} `json:"normalWallets"`
+}
+
+// DailyBalanceResponse accountV2 api daily_balance
+type DailyBalanceResponse struct {
+	APIResponse
+	DailyBalance []struct {
+		Timestamp float32 `json:"timestamp"`
+		Value     float32 `json:"value"`
+		Krw       float32 `json:"krw"`
+		Btc       float64 `json:"btc"`
+		Bch       float64 `json:"bch"`
+		Eth       float64 `json:"eth"`
+		Etc       float64 `json:"etc"`
+		Xrp       float64 `json:"xrp"`
+		Qtum      float64 `json:"qtum"`
+	} `json:"dailyBalance"`
+}
+
+// DepositAddressResponse accountV2 api deposit_address
+type DepositAddressResponse struct {
+	APIResponse
+	WalletAddress struct {
+		Btc    string `json:"btc"`
+		Bch    string `json:"bch"`
+		Eth    string `json:"eth"`
+		Etc    string `json:"etc"`
+		Xrp    string `json:"xrp"`
+		XrpTag string `json:"xrp_tag"`
+		Qtum   string `json:"qtum"`
+	} `json:"walletAddress"`
 }
 
 // Client http api client 구조체
@@ -98,17 +129,24 @@ func (c *Client) personalAuthHeader(payloadJSON []byte) (http.Header, error) {
 	}, nil
 }
 
-// Balance 사용자의 잔고 조회
-func (c *Client) Balance() (*BalanceResponse, error) {
-	reqURL := *c.accountV2
-	reqURL.Path = path.Join(reqURL.Path, "balance/")
-
+func (c *Client) onlyAuthHeader() (http.Header, error) {
 	payload := c.authPayload()
 	payloadJSON, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
 	}
 	authHeader, err := c.personalAuthHeader(payloadJSON)
+	if err != nil {
+		return nil, err
+	}
+	return authHeader, nil
+}
+
+func (c *Client) doAccountV2(uriPath string) (*json.Decoder, error) {
+	reqURL := *c.accountV2
+	reqURL.Path = path.Join(reqURL.Path, uriPath)
+
+	authHeader, err := c.onlyAuthHeader()
 	if err != nil {
 		return nil, err
 	}
@@ -119,9 +157,32 @@ func (c *Client) Balance() (*BalanceResponse, error) {
 	if err != nil {
 		return nil, err
 	}
+	unmarshal := json.NewDecoder(resp.Body)
+	return unmarshal, nil
+}
+
+// Balance 사용자의 잔고 조회
+func (c *Client) Balance() (*BalanceResponse, error) {
+	unmarshal, err := c.doAccountV2("balance/")
+	if err != nil {
+		return nil, err
+	}
 
 	balance := &BalanceResponse{}
-	unmarshal := json.NewDecoder(resp.Body)
+	if err := unmarshal.Decode(balance); err != nil {
+		return nil, err
+	}
+	return balance, nil
+}
+
+// DailyBalance 하루 단위 사용자의 잔고 조회
+func (c *Client) DailyBalance() (*DailyBalanceResponse, error) {
+	unmarshal, err := c.doAccountV2("daily_balance/")
+	if err != nil {
+		return nil, err
+	}
+
+	balance := &DailyBalanceResponse{}
 	if err := unmarshal.Decode(balance); err != nil {
 		return nil, err
 	}

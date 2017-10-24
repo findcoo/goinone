@@ -188,3 +188,17 @@ func (c *Client) DailyBalance() (*DailyBalanceResponse, error) {
 	}
 	return balance, nil
 }
+
+// DepositAddress 사용자의 지갑 조회
+func (c *Client) DepositAddress() (*DepositAddressResponse, error) {
+	unmarshal, err := c.doAccountV2("deposit_address")
+	if err != nil {
+		return nil, err
+	}
+
+	deposit := &DepositAddressResponse{}
+	if err := unmarshal.Decode(deposit); err != nil {
+		return nil, err
+	}
+	return deposit, nil
+}

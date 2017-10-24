@@ -11,11 +11,11 @@ func TestBalance(t *testing.T) {
 	secret := os.Getenv("COINONE_SECRET")
 
 	client := NewClient(token, secret)
-	balances, err := client.Balance()
+	balance, err := client.Balance()
 	if err != nil {
 		t.Log(err)
 		t.Fail()
 	}
-	log.Print(balances["btc"].Value)
-	log.Print(balances["eth"].Value)
+	log.Print(balance.Btc.Avail)
+	log.Print(balance.Btc.Value)
 }

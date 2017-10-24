@@ -6,8 +6,6 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
-	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"path"
@@ -34,10 +32,25 @@ type APIResponse struct {
 	ErrCode string `json:"errCode"`
 }
 
-// Balance accountv2 api balance
-type Balance struct {
-	Avail float64 `json:"avail"`
-	Value float64 `json:"balance"`
+// BalanceInfo balance api 응답의 하위 정보
+type BalanceInfo struct {
+	Avail string `json:"avail"`
+	Value string `json:"balance"`
+}
+
+// BalanceResponse accountV2 api balance
+type BalanceResponse struct {
+	APIResponse
+	Btc           BalanceInfo `json:"btc"`
+	Eth           BalanceInfo `json:"eth"`
+	Etc           BalanceInfo `json:"etc"`
+	Xrp           BalanceInfo `json:"xrp"`
+	Qtum          BalanceInfo `json:"qtum"`
+	Krw           BalanceInfo `json:"krw"`
+	NormalWallets []struct {
+		Balance float64 `json:"balance"`
+		Label   string  `json:"label"`
+	} `json:"normalWallets"`
 }
 
 // Client http api client 구조체
@@ -86,7 +99,7 @@ func (c *Client) personalAuthHeader(payloadJSON []byte) (http.Header, error) {
 }
 
 // Balance 사용자의 잔고 조회
-func (c *Client) Balance() (map[string]Balance, error) {
+func (c *Client) Balance() (*BalanceResponse, error) {
 	reqURL := *c.accountV2
 	reqURL.Path = path.Join(reqURL.Path, "balance/")
 
@@ -106,13 +119,11 @@ func (c *Client) Balance() (map[string]Balance, error) {
 	if err != nil {
 		return nil, err
 	}
-	data, _ := ioutil.ReadAll(resp.Body)
-	log.Print(string(data))
 
-	balances := map[string]Balance{}
+	balance := &BalanceResponse{}
 	unmarshal := json.NewDecoder(resp.Body)
-	if err := unmarshal.Decode(balances); err != nil {
+	if err := unmarshal.Decode(balance); err != nil {
 		return nil, err
 	}
-	return balances, nil
+	return balance, nil
 }
